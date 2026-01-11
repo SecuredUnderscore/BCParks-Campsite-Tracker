@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Setting up SMTP (Free Cloudflare/Gmail Method)</h2>
+    <p>To send emails from your custom domain (e.g., <code>alerts@yourdomain.com</code>) without paying for enterprise
+        email services, you can use Gmail's free SMTP server as a relay.</p>
+
+    <h3>Step 1: Receive Emails (Cloudflare)</h3>
+    <ol>
+        <li>Go to Cloudflare Dashboard > <strong>Email Routing</strong>.</li>
+        <li>Create a custom address (e.g., <code>alerts@...</code>) routing to your personal Gmail.</li>
+        <li>Verify the address in Gmail and add the required DNS records in Cloudflare.</li>
+    </ol>
+
+    <h3>Step 2: Get Google App Password</h3>
+    <ol>
+        <li>Go to <a href="https://myaccount.google.com/security" target="_blank">Google Security</a>.</li>
+        <li>Enable <strong>2-Step Verification</strong>.</li>
+        <li>Search for "App Passwords". Create one named "Campsite Tracker".</li>
+        <li>Copy the 16-character code. <strong>This is your SMTP Password.</strong></li>
+    </ol>
+
+    <h3>Step 3: Admin Configuration</h3>
+    <ul>
+        <li><strong>Provider:</strong> SMTP</li>
+        <li><strong>Host:</strong> smtp.gmail.com</li>
+        <li><strong>Port:</strong> 587</li>
+        <li><strong>Username:</strong> Your real Gmail address (e.g., john@gmail.com)</li>
+        <li><strong>Password:</strong> The 16-char App Password</li>
+        <li><strong>From Email:</strong> Your custom domain (e.g., alerts@yourdomain.com)</li>
+    </ul>
+
+    <p><a href="{{ url_for('main.admin_settings') }}">Back to Settings</a></p>
+</div>
+{% endblock %}

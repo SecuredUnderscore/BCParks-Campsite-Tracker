@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Your Alerts</h2>
+        <a href="{{ url_for('main.create_or_edit_alert') }}"><button>+ New Alert</button></a>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Campground</th>
+                    <th>Dates</th>
+                    <th>Mins</th>
+                    <th>Last Scan</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alert in alerts %}
+                <tr>
+                    <td>{{ campground_map.get(alert.campground_id, alert.campground_id) }} {% if alert.sub_campground_id
+                        %}
+                        ({{ alert.sub_campground_name or 'Map ' ~ alert.sub_campground_id }}){% endif %}</td>
+                    <td>{{ alert.start_date }} to {{ alert.end_date }}</td>
+                    <td>{{ alert.min_nights }}</td>
+                    <td>
+                        {% if alert.last_scanned_at %}
+                        {% set diff = (now - alert.last_scanned_at).total_seconds() %}
+                        <span
+                            style="{% if diff < (scan_interval * 60 * 2) %}color: green; font-weight: bold;{% endif %}">
+                            {{ alert.last_scanned_at | time_ago }}
+                        </span>
+                        {% else %}
+                        Never
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('main.create_or_edit_alert', alert_id=alert.id) }}"><button
+                                style="padding: 5px 10px; font-size: 0.9em; margin-right: 5px;">Edit</button></a>
+                        <form method="POST" action="{{ url_for('main.delete_alert') }}" style="display: inline;">
+                            <input type="hidden" name="alert_id" value="{{ alert.id }}">
+                            <button type="submit" class="danger"
+                                style="padding: 5px 10px; font-size: 0.9em;">Trash</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 20px;">No alerts active. Create one above!</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

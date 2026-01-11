@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Setting up Twilio SMS</h2>
+    <p>Twilio allows you to send SMS notifications and verify phone numbers.</p>
+
+    <h3>Step 1: Get Credentials</h3>
+    <ol>
+        <li>Log in to <a href="https://console.twilio.com/" target="_blank">Twilio Console</a>.</li>
+        <li>On the dashboard, find your <strong>Account SID</strong> (starts with AC) and <strong>Auth Token</strong>.
+        </li>
+        <li>Get a <strong>Twilio Phone Number</strong> (or buy one) to use as the "From Number".</li>
+    </ol>
+
+    <h3>Step 2: Create Verify Service</h3>
+    <ol>
+        <li>Go to <strong>Verify</strong> > <strong>Services</strong> in the sidebar.</li>
+        <li>Create a New Service (e.g. "Campsite Alert").</li>
+        <li>Copy the <strong>Service SID</strong> (starts with <code>VA</code>...).</li>
+    </ol>
+
+    <h3>Step 3: Admin Configuration</h3>
+    <ul>
+        <li><strong>Account SID:</strong> Your AC... SID</li>
+        <li><strong>Auth Token:</strong> Your secret token</li>
+        <li><strong>Verify Service SID:</strong> Your VA... SID</li>
+        <li><strong>From Number:</strong> Your Twilio number (e.g. +1234567890)</li>
+    </ul>
+
+    <p><a href="{{ url_for('main.admin_settings') }}">Back to Settings</a></p>
+</div>
+{% endblock %}

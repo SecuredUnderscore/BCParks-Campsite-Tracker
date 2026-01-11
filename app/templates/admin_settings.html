@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>System Settings</h2>
+    <form method="POST">
+        <h3>System Configuration</h3>
+        <label>Scan Interval (Minutes)</label>
+        <input type="number" name="SCAN_INTERVAL_MINUTES" value="{{ settings.get('SCAN_INTERVAL_MINUTES', '5') }}"
+            min="1">
+        <small class="text-muted" style="color: gray;">Restart required to apply changes to background worker.</small>
+        <hr>
+
+        <h3>Twilio (SMS) <a href="{{ url_for('main.docs', topic='twilio') }}" target="_blank"
+                style="font-size: 0.8em;">[?] How to Setup</a></h3>
+        <label>Account SID</label>
+        <input type="text" name="TWILIO_ACCOUNT_SID" value="{{ settings.get('TWILIO_ACCOUNT_SID', '') }}">
+
+        <label>Auth Token</label>
+        <input type="password" name="TWILIO_AUTH_TOKEN" value="{{ settings.get('TWILIO_AUTH_TOKEN', '') }}">
+
+        <label>Verify Service SID (for OTP)</label>
+        <input type="text" name="TWILIO_VERIFY_SERVICE_SID" value="{{ settings.get('TWILIO_VERIFY_SERVICE_SID', '') }}"
+            placeholder="VAxxxxxxxx...">
+
+        <label>From Number</label>
+        <input type="text" name="TWILIO_FROM_NUMBER" value="{{ settings.get('TWILIO_FROM_NUMBER', '') }}"
+            placeholder="+1...">
+
+        <hr>
+
+        <h3>Email Settings <a href="{{ url_for('main.docs', topic='smtp') }}" target="_blank"
+                style="font-size: 0.8em;">[?] How to Setup</a></h3>
+        <label>Provider</label>
+        <select name="EMAIL_PROVIDER" id="emailProvider" onchange="toggleEmailFields()"
+            style="margin-bottom: 10px; padding: 5px;">
+            <option value="smtp" {% if settings.get('EMAIL_PROVIDER')=='smtp' %}selected{% endif %}>SMTP (Gmail,
+                Outlook, Custom)</option>
+            <option value="sendgrid" {% if settings.get('EMAIL_PROVIDER')=='sendgrid' %}selected{% endif %}>Twilio
+                SendGrid</option>
+        </select>
+
+        <div id="smtpFields">
+            <label>SMTP Host</label>
+            <input type="text" name="EMAIL_HOST" value="{{ settings.get('EMAIL_HOST', '') }}"
+                placeholder="smtp.gmail.com">
+
+            <label>SMTP Port</label>
+            <input type="number" name="EMAIL_PORT" value="{{ settings.get('EMAIL_PORT', '') }}" placeholder="587">
+
+            <label>SMTP Username</label>
+            <input type="text" name="EMAIL_USER" value="{{ settings.get('EMAIL_USER', '') }}">
+
+            <label>SMTP Password</label>
+            <input type="password" name="EMAIL_PASSWORD" value="{{ settings.get('EMAIL_PASSWORD', '') }}">
+        </div>
+
+        <div id="sendgridFields" style="display: none;">
+            <label>SendGrid API Key</label>
+            <input type="password" name="SENDGRID_API_KEY" value="{{ settings.get('SENDGRID_API_KEY', '') }}"
+                placeholder="SG.xxxxxxxx...">
+        </div>
+
+        <label>From Email</label>
+        <input type="text" name="EMAIL_FROM" value="{{ settings.get('EMAIL_FROM', '') }}"
+            placeholder="notifications@example.com">
+
+        <br><br>
+        <button type="submit">Save Settings</button>
+    </form>
+</div>
+
+<script>
+    function toggleEmailFields() {
+        const provider = document.getElementById('emailProvider').value;
+        document.getElementById('smtpFields').style.display = provider === 'smtp' ? 'block' : 'none';
+        document.getElementById('sendgridFields').style.display = provider === 'sendgrid' ? 'block' : 'none';
+    }
+    // Init
+    toggleEmailFields();
+</script>
+{% endblock %}

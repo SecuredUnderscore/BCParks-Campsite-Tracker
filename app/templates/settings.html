@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Communication Settings</h2>
+    <p>Manage your notification methods here.</p>
+
+    <h3>Add Contact Method</h3>
+    <form method="POST" style="margin-bottom: 2rem;">
+        <input type="hidden" name="action" value="add_contact">
+        <div style="display: flex; gap: 10px;">
+            <select name="method_type" style="padding: 8px;">
+                <option value="email">Email</option>
+                <option value="sms">SMS (Phone)</option>
+            </select>
+            <input type="text" name="value" placeholder="Enter email or phone number" required style="flex: 1;">
+            <button type="submit">Add</button>
+        </div>
+    </form>
+
+    <h3>Your Contact Methods</h3>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Value</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for contact in contacts %}
+                <tr>
+                    <td>{{ contact.method_type|upper }}</td>
+                    <td>{{ contact.value }}</td>
+                    <td>
+                        {% if contact.method_type == 'sms' %}
+                        {% if contact.is_verified %}
+                        <span style="color: green; font-weight: bold;">Verified</span>
+                        {% else %}
+                        <span style="color: red;">Not Verified</span>
+                        <button onclick="startVerify('{{ contact.value }}')"
+                            style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-left: 10px;">Verify
+                            Now</button>
+                        {% endif %}
+                        {% else %}
+                        <span style="color: gray;">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" style="display: inline;">
+                            <input type="hidden" name="action" value="delete_contact">
+                            <input type="hidden" name="contact_id" value="{{ contact.id }}">
+                            <button type="submit" class="danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">No contact methods configured.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    async function startVerify(phone) {
+        if (!confirm("Send verification code to " + phone + "?")) return;
+
+        try {
+            const res = await fetch('/api/verify_phone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'start', phone: phone })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                const code = prompt("Enter the verification code sent to your phone:");
+                if (code) {
+                    const res2 = await fetch('/api/verify_phone', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'check', phone: phone, code: code })
+                    });
+                    const data2 = await res2.json();
+                    if (data2.success) {
+                        alert("Phone verified successfully!");
+                        location.reload();
+                    } else {
+                        alert("Verification failed: " + (data2.message || 'Unknown error'));
+                    }
+                }
+            } else {
+                alert("Error sending code: " + (data.message || data.error || 'Check server logs'));
+            }
+        } catch (e) {
+            alert("Request failed: " + e);
+        }
+    }
+</script>
+{% endblock %}

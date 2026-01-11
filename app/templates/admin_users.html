@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Manage Users</h2>
+    <form method="POST" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
+        <h3>Add User</h3>
+        <input type="hidden" name="action" value="add">
+        <label>Username</label>
+        <input type="text" name="username" required>
+        <label>Password</label>
+        <input type="password" name="password" required>
+        <label>
+            <input type="checkbox" name="is_admin"> Administrator
+        </label>
+        <br><br>
+        <button type="submit">Create User</button>
+    </form>
+
+    <h3>Existing Users</h3>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Password Hash</th>
+                    <th>Reset Password</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>{{ 'Admin' if user.is_admin else 'User' }}</td>
+                    <td>
+                        <span id="hash-{{ user.id }}"
+                            style="display: none; font-family: monospace; font-size: 0.8em; word-break: break-all;">{{
+                            user.password_hash }}</span>
+                        <span id="mask-{{ user.id }}">********</span>
+                        <button type="button" onclick="toggleHash('{{ user.id }}', this)"
+                            style="padding: 2px 5px; font-size: 0.8em; margin-left: 5px;">Show</button>
+                    </td>
+                    <td>
+                        <form method="POST" style="display: flex; gap: 5px;">
+                            <input type="hidden" name="action" value="reset_password">
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <input type="password" name="new_password" placeholder="New Pass" required
+                                style="width: 100px; padding: 4px;">
+                            <button type="submit" style="padding: 4px 8px;">Set</button>
+                        </form>
+                    </td>
+                    <td>
+                        {% if user.id != current_user.id %}
+                        <form method="POST" style="display: inline;">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <button type="submit" class="danger">Delete</button>
+                        </form>
+                        {% else %}
+                        (You)
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function toggleHash(uid, btn) {
+        const hashSpan = document.getElementById('hash-' + uid);
+        const maskSpan = document.getElementById('mask-' + uid);
+
+        if (hashSpan.style.display === 'none') {
+            hashSpan.style.display = 'inline';
+            maskSpan.style.display = 'none';
+            btn.innerText = 'Hide';
+        } else {
+            hashSpan.style.display = 'none';
+            maskSpan.style.display = 'inline';
+            btn.innerText = 'Show';
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: bcparks-web
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./instance:/app/instance
+    environment:
+      - SECRET_KEY=your-secret-key-change-me
+      - FLASK_ENV=production
+    restart: unless-stopped
+    command: gunicorn -w 4 -b 0.0.0.0:5000 "app:create_app()"
+
+  worker:
+    build: .
+    container_name: bcparks-worker
+    volumes:
+      - ./instance:/app/instance
+    environment:
+      - SECRET_KEY=your-secret-key-change-me
+      - FLASK_ENV=production
+    restart: unless-stopped
+    command: python run_worker.py
