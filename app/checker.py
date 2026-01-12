@@ -219,10 +219,17 @@ def get_site_names(campground_id):
             return {}
         data = resp.json()
         names = {}
-        for r in data:
-            if 'resourceId' in r and 'localizedValues' in r and len(r['localizedValues']) > 0:
-                # Store as STRING to ensure lookup matches (API IDs can be quirky)
-                names[str(r['resourceId'])] = r['localizedValues'][0]['name']
+        
+        # Handle Dict (Key=ID) or List answer
+        if isinstance(data, dict):
+            for res_id, r in data.items():
+                if 'localizedValues' in r and len(r['localizedValues']) > 0:
+                    names[str(res_id)] = r['localizedValues'][0]['name']
+        elif isinstance(data, list):
+            for r in data:
+                if 'resourceId' in r and 'localizedValues' in r and len(r['localizedValues']) > 0:
+                    names[str(r['resourceId'])] = r['localizedValues'][0]['name']
+                    
         return names
     except Exception as e:
         logger.warning(f"Failed to fetch site names: {e}")
