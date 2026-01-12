@@ -140,7 +140,9 @@
         const res = await fetch('/api/proxy/campgrounds');
         const data = await res.json();
         campgroundSelect.innerHTML = '<option value="">Select a Campground...</option>';
-        data.forEach(cg => {
+
+        // Map to objects with resolved names for sorting
+        const sortedCampgrounds = data.map(cg => {
             let name = 'Unknown';
             if (cg.localizedValues && cg.localizedValues[0] && cg.localizedValues[0].shortName) {
                 name = cg.localizedValues[0].shortName;
@@ -149,11 +151,14 @@
             } else if (cg.localizedValues && cg.localizedValues[0]) {
                 name = cg.localizedValues[0].fullName;
             }
+            return { id: cg.resourceLocationId, name: name };
+        }).sort((a, b) => a.name.localeCompare(b.name));
 
+        sortedCampgrounds.forEach(item => {
             const opt = document.createElement('option');
-            opt.value = cg.resourceLocationId;
-            opt.innerText = name;
-            if (initialCampId && String(cg.resourceLocationId) === String(initialCampId)) {
+            opt.value = item.id;
+            opt.innerText = item.name;
+            if (initialCampId && String(item.id) === String(initialCampId)) {
                 opt.selected = true;
             }
             campgroundSelect.appendChild(opt);
