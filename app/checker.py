@@ -162,7 +162,15 @@ def check_alert(alert, is_first_run=False):
             # Fetch names for better message
             site_names = get_site_names(alert.campground_id)
             camp_name = get_campground_name(alert.campground_id) or "Campground"
-            send_notification(alert, new_notifications, site_names, camp_name)
+            
+            # Send ONE notification for all findings to avoid spam, or Individual?
+            # User request implies specific format for "Campsite Found!".
+            # If we have multiple, let's send them individually to ensure the format matches exaclty what they want.
+            # (Loop is already set up for individual processing in extract/format)
+            # BUT we should probably reuse the connection?
+            
+            send_notifications(alert, new_notifications, site_names, camp_name)
+
         else:
             if new_notifications:
                 logger.info(f"Alert {alert.id}: State updated silently (Sliding Window or First Run).")
@@ -175,20 +183,32 @@ def check_alert(alert, is_first_run=False):
         logger.error(f"Error checking alert {alert.id}: {e}")
 
 def get_campground_name(campground_id):
-    # Try fetching details. Since specific API for checking exists, maybe this works?
-    # Or just use the map? We don't have the map here easily without DB.
-    # We'll try a quick generic fetch if possible, or fallback.
-    # We can try fetching the campground details endpoint.
+    # Attempt 1: Direct Resource Location API
     url = f"https://camping.bcparks.ca/api/resourcelocation/{campground_id}"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
         if resp.status_code == 200:
             d = resp.json()
-            # Try to find name in localized values
             if 'localizedValues' in d and len(d['localizedValues']) > 0:
                 return d['localizedValues'][0]['fullName']
     except:
         pass
+        
+    # Attempt 2: Fetch All (Fallback)
+    try:
+        resp = requests.get("https://camping.bcparks.ca/api/resourcelocation", headers=HEADERS, timeout=15)
+        if resp.status_code == 200:
+            all_camps = resp.json()
+            for c in all_camps:
+                # String comparison to be safe
+                if str(c.get('resourceLocationId')) == str(campground_id):
+                    if 'localizedValues' in c and len(c['localizedValues']) > 0:
+                        return c['localizedValues'][0]['fullName']
+                    elif 'shortName' in c:
+                        return c['shortName']
+    except:
+        pass
+        
     return None
 
 def get_site_names(campground_id):
@@ -201,7 +221,8 @@ def get_site_names(campground_id):
         names = {}
         for r in data:
             if 'resourceId' in r and 'localizedValues' in r and len(r['localizedValues']) > 0:
-                names[r['resourceId']] = r['localizedValues'][0]['name']
+                # Store as STRING to ensure lookup matches (API IDs can be quirky)
+                names[str(r['resourceId'])] = r['localizedValues'][0]['name']
         return names
     except Exception as e:
         logger.warning(f"Failed to fetch site names: {e}")
@@ -217,19 +238,24 @@ def add_finding(findings, res_id, base_date, idx, nights):
     
     findings[res_id].append(key)
 
-def send_notification(alert, notifications, site_names, camp_name):
+def send_notifications(alert, notifications, site_names, camp_name):
     # notifications: list of (res_id, "YYYY-MM-DD:Nights")
     
     logger.info(f"NOTIFICATION FOR ALERT {alert.id}: Found {len(notifications)} slots.")
     
+    # Pre-fetch contacts
+    user = alert.user
+    contacts = user.contacts
+    from .models import SystemSetting
+    from .twilio_helper import send_sms
+    
     for res_id, info in notifications:
         date_str, nights = info.split(':')
-        
         dt = datetime.strptime(date_str, '%Y-%m-%d').date()
         end_dt = dt + timedelta(days=int(nights))
         
-        # Resolve Name
-        site_label = site_names.get(res_id, f"Site {res_id}")
+        # Resolve Name (Lookup using STRING key)
+        site_label = site_names.get(str(res_id), str(res_id))
         
         url = (
             f"https://camping.bcparks.ca/create-booking/results?"
@@ -241,92 +267,65 @@ def send_notification(alert, notifications, site_names, camp_name):
             f"bookingCategoryId=0&equipmentId=-32768&subEquipmentId=-32768"
         )
         
-        # Format: Campsite Found! {Campground} site {Site}, {Day} {Start Month} {Start Day} - {End Month} {End Day} for {#} nights. {Link}
+        # EXACT Format requested:
+        # Campsite Found! {Campground} site {Site #/Name}, {Day} {Start Month} {Start Day} - {End Month} {End Day} for {#} nights. {Link}
         msg = (
             f"Campsite Found! {camp_name} site {site_label}, "
             f"{dt.strftime('%a %b %d')} - {end_dt.strftime('%b %d')} "
             f"for {nights} nights. {url}"
         )
         
-        print("\n" + "="*50)
-        print(msg)
-        print("="*50 + "\n")
+        print(f"SENDING: {msg}")
         
-        
-        # Integrate Email/SMS
-        # Need to fetch user contacts
-        user = alert.user
-        contacts = user.contacts 
-        
-        # Prepare content
-        subject = f"BC Parks Alert: Found {len(notifications)} slots!"
-        
-        # SMS Body (shorter)
-        sms_body = f"Found {len(notifications)} slots for {alert.sub_campground_name or 'Map ' + str(alert.sub_campground_id)}. First: {notifications[0][1].split(':')[0]}. Check app!"
-        
-        from .models import SystemSetting
-        from .twilio_helper import send_sms
-        import smtplib
-        from email.mime.text import MIMEText
-        from email.mime.multipart import MIMEMultipart
+        subject = f"BC Parks: {camp_name} Available!"
 
         for contact in contacts:
             if contact.method_type == 'sms':
                 if contact.is_verified:
-                    logger.info(f"Sending SMS to {contact.value}")
-                    send_sms(contact.value, sms_body)
+                    # USE FULL MSG for SMS as requested
+                    send_sms(contact.value, msg)
                 else:
                     logger.warning(f"Skipping SMS to {contact.value} (Not Verified)")
             
             elif contact.method_type == 'email':
-                # Email Logic
-                provider = SystemSetting.get_value('EMAIL_PROVIDER', 'smtp')
-                from_addr = SystemSetting.get_value('EMAIL_FROM')
+                send_email(contact.value, subject, msg)
+
+def send_email(to_addr, subject, body):
+    from .models import SystemSetting
+    provider = SystemSetting.get_value('EMAIL_PROVIDER', 'smtp')
+    from_addr = SystemSetting.get_value('EMAIL_FROM')
+    
+    try:
+        if provider == 'sendgrid':
+             api_key = SystemSetting.get_value('SENDGRID_API_KEY')
+             if api_key and from_addr:
+                from sendgrid import SendGridAPIClient
+                from sendgrid.helpers.mail import Mail
+                message = Mail(from_email=from_addr, to_emails=to_addr, subject=subject, plain_text_content=body)
+                sg = SendGridAPIClient(api_key)
+                sg.send(message)
+        else:
+            # SMTP
+            host = SystemSetting.get_value('EMAIL_HOST')
+            port = SystemSetting.get_value('EMAIL_PORT')
+            user_email = SystemSetting.get_value('EMAIL_USER')
+            password = SystemSetting.get_value('EMAIL_PASSWORD')
+            
+            if host and port and user_email and password:
+                import smtplib
+                from email.mime.text import MIMEText
+                from email.mime.multipart import MIMEMultipart
                 
-                if provider == 'sendgrid':
-                     api_key = SystemSetting.get_value('SENDGRID_API_KEY')
-                     if api_key and from_addr:
-                        try:
-                            from sendgrid import SendGridAPIClient
-                            from sendgrid.helpers.mail import Mail
-                            
-                            message = Mail(
-                                from_email=from_addr,
-                                to_emails=contact.value,
-                                subject=subject,
-                                plain_text_content=msg)
-                            
-                            sg = SendGridAPIClient(api_key)
-                            response = sg.send(message)
-                            logger.info(f"Sent email via SendGrid to {contact.value} (Status: {response.status_code})")
-                        except Exception as e:
-                            logger.error(f"SendGrid Email failed: {e}")
-                else:
-                    # SMTP (Default)
-                    host = SystemSetting.get_value('EMAIL_HOST')
-                    port = SystemSetting.get_value('EMAIL_PORT')
-                    user_email = SystemSetting.get_value('EMAIL_USER')
-                    password = SystemSetting.get_value('EMAIL_PASSWORD')
-                    
-                    if host and port and user_email and password:
-                        try:
-                            import smtplib
-                            from email.mime.text import MIMEText
-                            from email.mime.multipart import MIMEMultipart
-                            
-                            email_msg = MIMEMultipart()
-                            email_msg['From'] = from_addr or user_email
-                            email_msg['To'] = contact.value
-                            email_msg['Subject'] = subject
-                            
-                            # msg IS the string content defined above
-                            email_msg.attach(MIMEText(msg, 'plain'))
-                            
-                            server = smtplib.SMTP(host, int(port))
-                            server.starttls()
-                            server.login(user_email, password)
-                            server.send_message(email_msg)
-                            server.quit()
-                            logger.info(f"Sent email via SMTP to {contact.value}")
-                        except Exception as e:
-                            logger.error(f"SMTP Email failed: {e}")
+                email_msg = MIMEMultipart()
+                email_msg['From'] = from_addr or user_email
+                email_msg['To'] = to_addr
+                email_msg['Subject'] = subject
+                email_msg.attach(MIMEText(body, 'plain'))
+                
+                server = smtplib.SMTP(host, int(port))
+                server.starttls()
+                server.login(user_email, password)
+                server.send_message(email_msg)
+                server.quit()
+    except Exception as e:
+        logging.error(f"Email failed: {e}")
