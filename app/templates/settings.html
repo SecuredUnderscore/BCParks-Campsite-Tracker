@@ -8,13 +8,14 @@
     <h3>Add Contact Method</h3>
     <form method="POST" style="margin-bottom: 2rem;">
         <input type="hidden" name="action" value="add_contact">
-        <div style="display: flex; gap: 10px;">
-            <select name="method_type" style="padding: 8px;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <select name="method_type" style="padding: 10px; min-width: 120px; font-size: 16px;">
                 <option value="email">Email</option>
                 <option value="sms">SMS (Phone)</option>
             </select>
-            <input type="text" name="value" placeholder="Enter email or phone number" required style="flex: 1;">
-            <button type="submit">Add</button>
+            <input type="text" name="value" placeholder="Enter email or phone number" required
+                style="flex: 1; padding: 10px; min-width: 250px; font-size: 16px;">
+            <button type="submit" style="padding: 10px 20px; font-size: 16px;">Add</button>
         </div>
     </form>
 
