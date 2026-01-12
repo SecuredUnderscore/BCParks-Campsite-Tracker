@@ -19,7 +19,7 @@ if __name__ == '__main__':
     with app.app_context():
         from app.models import SystemSetting
         current_interval = int(SystemSetting.get_value('SCAN_INTERVAL_MINUTES', '5'))
-        print(f"DEBUG: Using Scan Interval: {current_interval} minutes")
+        print(f"DEBUG: Using Scan Interval: {current_interval} minute(s)")
 
     scheduler.add_job(id='scanner_task', func=check_alerts, args=[app], trigger='interval', minutes=current_interval)
     
