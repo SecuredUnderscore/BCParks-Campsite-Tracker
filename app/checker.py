@@ -34,11 +34,15 @@ def check_alert(alert, is_first_run=False):
     limit = now + timedelta(days=150) # Approx 5 months
     
     # Adjust scan window to bounds
-    scan_start = max(alert.start_date, now)
-    scan_end = min(alert.end_date, limit)
+    # Adjust scan window to bounds
+    # Extend scan_end by min_nights to ensure we catch bookings starting ON the last day
+    extended_end_date = alert.end_date + timedelta(days=alert.min_nights)
     
-    if scan_start > scan_end:
-        return # Out of bounds or in past
+    scan_start = max(alert.start_date, now)
+    scan_end = min(extended_end_date, limit)
+    
+    if scan_start > alert.end_date: # If the check window is purely in the past/invalid
+         return
 
     # API Request
     # Note: mapId is stored in sub_campground_id (from our recent fix)
@@ -79,14 +83,28 @@ def check_alert(alert, is_first_run=False):
             run_start_idx = -1
             
             for i, day in enumerate(daily_data):
-                # User indicated availability is 0 when available?
-                # Using == 0 based on user request/speculation.
+                # Calculate the date of this specific day
+                this_day_date = scan_start + timedelta(days=i)
+                
+                # Validation: If we are past the user's "Latest Arrival Date" + Min Nights, we don't care.
+                # Actually, we rely on consecutive counts. 
+                # CRITICAL: We only want to alert if the START date is <= alert.end_date.
+                
                 val = day.get('availability', -1)
                 is_avail = (val == 0) 
                 
                 if is_avail:
                     if run_start_idx == -1:
-                        run_start_idx = i
+                        # This is the potential start date
+                        # Is this start date within valid arrival window?
+                        if this_day_date <= alert.end_date:
+                            run_start_idx = i
+                        else:
+                            # We started too late (after Latest Arrival Date)
+                            # Do not start a run here. Maximize loop efficiency? 
+                            # If we are past end_date, we can't start a NEW run.
+                            continue 
+                            
                     consecutive += 1
                 else:
                     # Check if run met criteria

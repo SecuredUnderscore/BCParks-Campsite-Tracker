@@ -72,14 +72,13 @@
 
         <!-- Step 4: Dates & Criteria -->
         <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 200px;">
-                    <label>Start Date</label>
+                    <label>Earliest Arrival Date</label>
                     <input type="date" name="start_date" required value="{{ alert.start_date if alert else '' }}"
                         style="padding: 10px;">
                 </div>
                 <div style="flex: 1; min-width: 200px;">
-                    <label>End Date</label>
+                    <label>Latest Arrival Date</label>
                     <input type="date" name="end_date" required value="{{ alert.end_date if alert else '' }}"
                         style="padding: 10px;">
                 </div>
@@ -89,6 +88,9 @@
                         required style="padding: 10px;">
                 </div>
             </div>
+            <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                We will check for stays starting between these dates. The system automatically checks forward enough days to ensure your minimum night requirement is met.
+            </p>
         </div>
 
         <div style="margin-top: 20px;">
