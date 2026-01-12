@@ -8,7 +8,7 @@
         <label>Scan Interval (Minutes)</label>
         <input type="number" name="SCAN_INTERVAL_MINUTES" value="{{ settings.get('SCAN_INTERVAL_MINUTES', '5') }}"
             min="1">
-        <small class="text-muted" style="color: gray;">Restart required to apply changes to background worker.</small>
+        <small class="text-muted" style="color: green;">Updates applied automatically within 1 minute.</small>
         <hr>
 
         <h3>Twilio (SMS) <a href="{{ url_for('main.docs', topic='twilio') }}" target="_blank"

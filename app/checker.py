@@ -118,13 +118,35 @@ def check_alert(alert, is_first_run=False):
             
             for r in ranges: # r is string "YYYY-MM-DD:Nights"
                 if r not in prev_ranges:
-                    new_notifications.append((res_id, r))
+                    # CHECK FOR SLIDING WINDOW ARTIFACT (Bug Fix)
+                    is_shifted = False
+                    try:
+                        curr_date_str, curr_nights_str = r.split(':')
+                        curr_date = datetime.strptime(curr_date_str, '%Y-%m-%d').date()
+                        curr_nights = int(curr_nights_str)
+                        
+                        for pr in prev_ranges:
+                            prev_date_str, prev_nights_str = pr.split(':')
+                            prev_date = datetime.strptime(prev_date_str, '%Y-%m-%d').date()
+                            prev_nights = int(prev_nights_str)
+                            
+                            # Logic: If Current is exactly Previous + 1 Day, and End Dates match
+                            # Prev End = Prev Start + Prev Nights
+                            # Curr End = Curr Start + Curr Nights
+                            if (curr_date == prev_date + timedelta(days=1)) and \
+                               ((curr_date + timedelta(days=curr_nights)) == (prev_date + timedelta(days=prev_nights))):
+                                is_shifted = True
+                                break
+                    except:
+                        pass
+                    
+                    if not is_shifted:
+                        new_notifications.append((res_id, r))
         
         # Suppress notification if:
         # 1. No new notifications (obviously)
         # 2. It's the Global First Run (Application Startup)
         # 3. It's likely the First Scan for this alert (No previous state stored)
-        #    - Note: If user wants to just sync state without alert on first run.
         should_notify = True
         
         if not new_notifications:
@@ -139,10 +161,11 @@ def check_alert(alert, is_first_run=False):
         if should_notify:
             # Fetch names for better message
             site_names = get_site_names(alert.campground_id)
-            send_notification(alert, new_notifications, site_names)
+            camp_name = get_campground_name(alert.campground_id) or "Campground"
+            send_notification(alert, new_notifications, site_names, camp_name)
         else:
             if new_notifications:
-                logger.info(f"Alert {alert.id}: State updated silently.")
+                logger.info(f"Alert {alert.id}: State updated silently (Sliding Window or First Run).")
             
         # Update State
         alert.last_found_availability = json.dumps(current_findings)
@@ -150,6 +173,23 @@ def check_alert(alert, is_first_run=False):
         
     except Exception as e:
         logger.error(f"Error checking alert {alert.id}: {e}")
+
+def get_campground_name(campground_id):
+    # Try fetching details. Since specific API for checking exists, maybe this works?
+    # Or just use the map? We don't have the map here easily without DB.
+    # We'll try a quick generic fetch if possible, or fallback.
+    # We can try fetching the campground details endpoint.
+    url = f"https://camping.bcparks.ca/api/resourcelocation/{campground_id}"
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+        if resp.status_code == 200:
+            d = resp.json()
+            # Try to find name in localized values
+            if 'localizedValues' in d and len(d['localizedValues']) > 0:
+                return d['localizedValues'][0]['fullName']
+    except:
+        pass
+    return None
 
 def get_site_names(campground_id):
     url = f"https://camping.bcparks.ca/api/resourcelocation/resources?resourceLocationId={campground_id}"
@@ -177,7 +217,7 @@ def add_finding(findings, res_id, base_date, idx, nights):
     
     findings[res_id].append(key)
 
-def send_notification(alert, notifications, site_names):
+def send_notification(alert, notifications, site_names, camp_name):
     # notifications: list of (res_id, "YYYY-MM-DD:Nights")
     
     logger.info(f"NOTIFICATION FOR ALERT {alert.id}: Found {len(notifications)} slots.")
@@ -201,10 +241,11 @@ def send_notification(alert, notifications, site_names):
             f"bookingCategoryId=0&equipmentId=-32768&subEquipmentId=-32768"
         )
         
+        # Format: Campsite Found! {Campground} site {Site}, {Day} {Start Month} {Start Day} - {End Month} {End Day} for {#} nights. {Link}
         msg = (
-            f"Campsite Found! {alert.sub_campground_name or 'Map ' + str(alert.sub_campground_id)} "
-            f"Site: {site_label}, {dt.strftime('%a %b %d')} - {end_dt.strftime('%b %d')}, "
-            f"{nights} Nights.\n{url}"
+            f"Campsite Found! {camp_name} site {site_label}, "
+            f"{dt.strftime('%a %b %d')} - {end_dt.strftime('%b %d')} "
+            f"for {nights} nights. {url}"
         )
         
         print("\n" + "="*50)
