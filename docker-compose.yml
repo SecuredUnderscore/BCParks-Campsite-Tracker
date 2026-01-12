@@ -2,8 +2,8 @@ services:
   web:
     build: .
     container_name: bcparks-web
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     volumes:
       - ./instance:/app/instance
     environment:
