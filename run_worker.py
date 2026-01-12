@@ -32,9 +32,12 @@ if __name__ == '__main__':
                 new_interval = int(SystemSetting.get_value('SCAN_INTERVAL_MINUTES', '5'))
                 if new_interval != current_interval:
                     print(f"CONFIG CHANGE: Updating scan interval from {current_interval} to {new_interval} minutes.")
-                    print(f"CONFIG CHANGE: Updating scan interval from {current_interval} to {new_interval} minutes.")
-                    # scheduler.scheduler.reschedule_job(...) might be safer but delete/add is foolproof
-                    scheduler.delete_job('scanner_task')
+                    # Use standard 'remove_job' (native APScheduler name)
+                    try:
+                        scheduler.remove_job('scanner_task')
+                    except:
+                        pass # Job might not exist or verify failed
+                        
                     scheduler.add_job(id='scanner_task', func=check_alerts, args=[app_instance], trigger='interval', minutes=new_interval)
                     current_interval = new_interval
             except Exception as e:

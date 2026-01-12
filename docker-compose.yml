@@ -17,6 +17,8 @@ services:
     container_name: bcparks-worker
     volumes:
       - ./instance:/app/instance
+      - ./app:/app/app
+      - ./run_worker.py:/app/run_worker.py
     environment:
       - SECRET_KEY=your-secret-key-change-me
       - FLASK_ENV=production
