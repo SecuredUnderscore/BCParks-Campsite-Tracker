@@ -25,10 +25,10 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-      container_name: cloudflared-camping1
-      restart: unless-stopped
-      command: tunnel run Camping1
-      volumes:
-        - /root/.cloudflared:/home/nonroot/.cloudflared
-      depends_on:
-        - web
+    container_name: cloudflared-camping1
+    restart: unless-stopped
+    command: tunnel run Camping1
+    volumes:
+      - /root/.cloudflared:/home/nonroot/.cloudflared
+    depends_on:
+      - web
