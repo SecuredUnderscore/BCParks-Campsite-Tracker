@@ -12,11 +12,14 @@
                     <div class="list-group mb-4">
                         {% for contact in contacts %}
                         <label class="list-group-item d-flex align-items-center">
-                            <input class="form-check-input me-3" type="radio" name="contact_id" value="{{ contact.id }}"
-                                required>
-                            <div>
-                                <h6 class="mb-0 text-capitalize">{{ contact.type }}</h6>
-                                <small class="text-muted">{{ contact.start_val }}</small>
+                            <div class="form-check w-100 d-flex align-items-center mb-0">
+                                <input class="form-check-input me-3" type="radio" name="contact_id"
+                                    value="{{ contact.id }}" id="contact_{{ contact.id }}" required
+                                    style="margin-top: 0;">
+                                <div>
+                                    <h6 class="mb-0 text-capitalize">{{ contact.type }}</h6>
+                                    <small class="text-muted">{{ contact.start_val }}</small>
+                                </div>
                             </div>
                         </label>
                         {% else %}

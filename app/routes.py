@@ -416,22 +416,40 @@ def reset_options():
     user = User.query.get(user_id)
     if not user:
         return redirect(url_for('main.reset_request'))
-        
+    
+    # Mask contacts for privacy helper
+    def get_masked_val(contact):
+        if contact.method_type == 'email':
+            parts = contact.value.split('@')
+            if len(parts) == 2:
+                return f"{parts[0][0]}***@{parts[1]}"
+        elif contact.method_type == 'sms':
+            if len(contact.value) > 4:
+                return f"***-***-{contact.value[-4:]}"
+        return "********"
+
     if request.method == 'POST':
         contact_id = request.form.get('contact_id')
         contact = next((c for c in user.contacts if str(c.id) == contact_id), None)
         
         if contact:
+            # Include part of password hash in token to invalidate on password change
+            # Format: 'user_id|password_hash_tail'
+            clean_hash = (user.password_hash or '')[-10:]
+            payload = {'uid': user.id, 'h': clean_hash}
+            
             s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-            token = s.dumps(user.id, salt='password-reset-salt')
+            token = s.dumps(payload, salt='password-reset-salt')
             link = url_for('main.reset_verify', token=token, _external=True)
+            
+            masked_msg_val = get_masked_val(contact)
             
             if contact.method_type == 'email':
                 send_email(contact.value, 'Password Reset Request', f'Click here to reset your password: {link}')
-                flash(f'Reset link sent to {contact.value}', 'success')
+                flash(f'Reset link sent to {masked_msg_val}', 'success')
             elif contact.method_type == 'sms':
-                send_sms(contact.value, f'Reset your password: {link}')
-                flash(f'Reset link sent to {contact.value}', 'success')
+                send_sms(contact.value, f'Reset your password (valid for 1 hour): {link}')
+                flash(f'Reset link sent to {masked_msg_val}', 'success')
             
             return redirect(url_for('main.login'))
         else:
@@ -440,19 +458,10 @@ def reset_options():
     # Mask contacts for privacy
     masked_contacts = []
     for c in user.contacts:
-        masked_val = c.value
-        if c.method_type == 'email':
-            parts = c.value.split('@')
-            if len(parts) == 2:
-                masked_val = f"{parts[0][0]}***@{parts[1]}"
-        elif c.method_type == 'sms':
-            if len(c.value) > 4:
-                masked_val = f"***-***-{c.value[-4:]}"
-        
         masked_contacts.append({
             'id': c.id,
             'type': c.method_type,
-            'start_val': masked_val
+            'start_val': get_masked_val(c)
         })
         
     return render_template('reset_options.html', contacts=masked_contacts)
@@ -464,7 +473,17 @@ def reset_verify(token):
         
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
     try:
-        user_id = s.loads(token, salt='password-reset-salt', max_age=3600) # 1 hour expiration
+        # Decode payload
+        payload = s.loads(token, salt='password-reset-salt', max_age=3600)
+        
+        # Backward compatibility check (if old token format was used, though user just asked for this now)
+        if isinstance(payload, int):
+             user_id = payload
+             token_hash = None
+        else:
+             user_id = payload.get('uid')
+             token_hash = payload.get('h')
+             
     except SignatureExpired:
         flash('The reset token has expired.', 'error')
         return redirect(url_for('main.reset_request'))
@@ -475,6 +494,12 @@ def reset_verify(token):
     user = User.query.get(user_id)
     if not user:
         flash('User not found.', 'error')
+        return redirect(url_for('main.reset_request'))
+    
+    # Validation: Check if password has changed since token generation
+    current_hash_tail = (user.password_hash or '')[-10:]
+    if token_hash is not None and token_hash != current_hash_tail:
+        flash('Link expired or already used.', 'error')
         return redirect(url_for('main.reset_request'))
         
     if request.method == 'POST':
