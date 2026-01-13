@@ -1,6 +1,22 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% set unverified_phones = current_user.contacts | selectattr('method_type', 'equalto', 'sms') |
+selectattr('is_verified', 'equalto', false) | list %}
+{% if current_user.contacts | length == 0 %}
+<div
+    style="background-color: #f8dbdb; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+    <strong>Action Needed:</strong> Update your contact details in <a href="{{ url_for('main.settings') }}">settings</a>
+    to start receiving alerts.
+</div>
+{% endif %}
+{% if unverified_phones | length > 0 %}
+<div
+    style="background-color: #f8dbdb; color: #721c24; padding: 10px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+    <strong>Action Needed:</strong> You have an unverified phone number saved, resolve in <a
+        href="{{ url_for('main.settings') }}">settings</a> to start receiving alerts.
+</div>
+{% endif %}
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h2>Your Alerts</h2>
