@@ -129,6 +129,38 @@ def logout():
     logout_user()
     return redirect(url_for('main.login'))
 
+@main.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        confirm = request.form.get('confirm')
+        
+        # Validation
+        if not re.fullmatch(r'[a-zA-Z0-9]+', username):
+            flash('Username must be alphanumeric.', 'error')
+        elif len(username) >= 20:
+             flash('Username must be less than 20 characters.', 'error')
+        elif User.query.filter_by(username=username).first():
+            flash('Username already exists.', 'error')
+        elif password != confirm:
+            flash('PINs do not match.', 'error')
+        elif not re.fullmatch(r'\d{4,6}', password):
+            flash('PIN must be 4-6 digits.', 'error')
+        else:
+            # Create User
+            new_user = User(username=username)
+            new_user.set_password(password)
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Account created! Please log in.', 'success')
+            return redirect(url_for('main.login'))
+            
+    return render_template('register.html')
+
 @main.route('/admin/users', methods=['GET', 'POST'])
 @login_required
 def admin_users():

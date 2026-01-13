@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" style="max-width: 400px; margin: auto;">
+    <h2 class="text-center mb-4">Register</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" pattern="[a-zA-Z0-9]+" maxlength="19"
+                title="Alphanumeric characters only, less than 20 characters." required>
+            <div class="form-text">Alphanumeric, max 19 chars.</div>
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">PIN</label>
+            <input type="tel" class="form-control" id="password" name="password" pattern="\d{4,6}" minlength="4"
+                maxlength="6" title="4-6 digit numeric PIN." required>
+            <div class="form-text">4-6 digit numeric PIN.</div>
+        </div>
+        <div class="mb-3">
+            <label for="confirm" class="form-label">Confirm PIN</label>
+            <input type="tel" class="form-control" id="confirm" name="confirm" pattern="\d{4,6}" minlength="4"
+                maxlength="6" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Register</button>
+        <div class="text-center mt-3">
+            <a href="{{ url_for('main.login') }}">Already have an account? Login</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
