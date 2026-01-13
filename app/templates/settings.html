@@ -6,18 +6,50 @@
     <p>Manage your notification methods here.</p>
 
     <h3>Add Contact Method</h3>
-    <form method="POST" style="margin-bottom: 2rem;">
+    <form method="POST" style="margin-bottom: 2rem;" id="add-contact-form">
         <input type="hidden" name="action" value="add_contact">
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <select name="method_type" style="padding: 10px; min-width: 120px; font-size: 16px;">
-                <option value="email">Email</option>
-                <option value="sms">SMS (Phone)</option>
-            </select>
-            <input type="text" name="value" placeholder="Enter email or phone number" required
-                style="flex: 1; padding: 10px; min-width: 250px; font-size: 16px;">
-            <button type="submit" style="padding: 10px 20px; font-size: 16px;">Add</button>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start;">
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <select name="method_type" id="method-type-select"
+                    style="padding: 10px; min-width: 120px; font-size: 16px;" onchange="updateFormInputs()">
+                    <option value="email">Email</option>
+                    <option value="sms">SMS (Phone)</option>
+                </select>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+                <input type="text" name="value" id="contact-value-input" placeholder="Enter email" required
+                    style="padding: 10px; min-width: 250px; font-size: 16px;">
+                <small id="input-hint" style="color: #666; font-size: 0.9em; display: none;"></small>
+            </div>
+            <button type="submit" style="padding: 10px 20px; font-size: 16px; height: 42px;">Add</button>
         </div>
     </form>
+
+    <script>
+        function updateFormInputs() {
+            const typeSelect = document.getElementById('method-type-select');
+            const input = document.getElementById('contact-value-input');
+            const hint = document.getElementById('input-hint');
+
+            if (typeSelect.value === 'sms') {
+                input.placeholder = "e.g., 1234567890 or +15551234567";
+                // Regex: Exact 10 digits OR starting with + followed by 10 or more digits
+                input.pattern = "(\\d{10}|\\+\\d{10,})";
+                input.title = "Please enter exactly 10 digits, or if using a country code (other than +1 default assumption), start with + followed by the number.";
+
+                hint.innerText = "Format: 10 digits (1234567890) OR international format (+12345678901)";
+                hint.style.display = 'block';
+            } else {
+                input.placeholder = "Enter email";
+                input.removeAttribute('pattern');
+                input.removeAttribute('title');
+                hint.style.display = 'none';
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', updateFormInputs);
+    </script>
 
     <h3>Your Contact Methods</h3>
     <div class="table-responsive">

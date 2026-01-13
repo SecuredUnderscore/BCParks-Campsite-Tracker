@@ -6,6 +6,7 @@ from .models import User
 import requests
 import json
 import os
+import re
 from datetime import datetime
 
 main = Blueprint('main', __name__)
@@ -214,6 +215,12 @@ def settings():
             method_type = request.form.get('method_type')
             value = request.form.get('value')
             if value:
+                if method_type == 'sms':
+                    # Enforce strict phone number format: 10 digits OR + followed by >10 digits
+                    if not re.match(r'^(\d{10}|\+\d{10,})$', value):
+                        flash('Invalid phone format. Must be exactly 10 digits (e.g. 1234567890) or start with + and have more than 10 digits.')
+                        return redirect(url_for('main.settings'))
+
                 contact = ContactMethod(user_id=current_user.id, method_type=method_type, value=value)
                 db.session.add(contact)
                 db.session.commit()
