@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Select Verification Method</h2>
+                <p class="text-center text-muted mb-4">Where should we send the reset code?</p>
+
+                <form method="POST">
+                    <div class="list-group mb-4">
+                        {% for contact in contacts %}
+                        <label class="list-group-item d-flex align-items-center">
+                            <input class="form-check-input me-3" type="radio" name="contact_id" value="{{ contact.id }}"
+                                required>
+                            <div>
+                                <h6 class="mb-0 text-capitalize">{{ contact.type }}</h6>
+                                <small class="text-muted">{{ contact.start_val }}</small>
+                            </div>
+                        </label>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            No contact methods found for this account. Please contact an administrator.
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if contacts %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                    </div>
+                    {% endif %}
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('main.reset_request') }}" class="text-decoration-none">Back</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

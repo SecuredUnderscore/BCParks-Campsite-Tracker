@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Set New Password</h2>
+                <p class="text-center text-muted">Please enter a new 4-6 digit PIN.</p>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="password" class="form-label">New PIN (4-6 Digits)</label>
+                        <input type="tel" class="form-control" id="password" name="password" pattern="\d{4,6}"
+                            minlength="4" maxlength="6" title="Password must be a 4-6 digit numeric PIN." required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm" class="form-label">Confirm PIN</label>
+                        <input type="tel" class="form-control" id="confirm" name="confirm" pattern="\d{4,6}"
+                            minlength="4" maxlength="6" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Update Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

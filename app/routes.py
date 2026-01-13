@@ -1,5 +1,5 @@
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify
+from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, current_app, session
 from flask_login import login_user, logout_user, login_required, current_user
 from . import db
 from .models import User
@@ -8,6 +8,9 @@ import json
 import os
 import re
 from datetime import datetime
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+from .email_helper import send_email
+from .twilio_helper import send_sms
 
 main = Blueprint('main', __name__)
 
@@ -387,5 +390,107 @@ def time_ago_filter(dt):
     if hours < 24:
         return f"{hours} hrs ago"
     return f"{days} days ago"
+
+@main.route('/reset_password', methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username')
+        user = User.query.filter_by(username=username).first()
+        if user:
+            session['reset_user_id'] = user.id
+            return redirect(url_for('main.reset_options'))
+        else:
+            flash('Username not found.', 'error')
+            
+    return render_template('reset_request.html')
+
+@main.route('/reset_password/options', methods=['GET', 'POST'])
+def reset_options():
+    user_id = session.get('reset_user_id')
+    if not user_id:
+        return redirect(url_for('main.reset_request'))
+        
+    user = User.query.get(user_id)
+    if not user:
+        return redirect(url_for('main.reset_request'))
+        
+    if request.method == 'POST':
+        contact_id = request.form.get('contact_id')
+        contact = next((c for c in user.contacts if str(c.id) == contact_id), None)
+        
+        if contact:
+            s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+            token = s.dumps(user.id, salt='password-reset-salt')
+            link = url_for('main.reset_verify', token=token, _external=True)
+            
+            if contact.method_type == 'email':
+                send_email(contact.value, 'Password Reset Request', f'Click here to reset your password: {link}')
+                flash(f'Reset link sent to {contact.value}', 'success')
+            elif contact.method_type == 'sms':
+                send_sms(contact.value, f'Reset your password: {link}')
+                flash(f'Reset link sent to {contact.value}', 'success')
+            
+            return redirect(url_for('main.login'))
+        else:
+            flash('Invalid contact selected.', 'error')
+
+    # Mask contacts for privacy
+    masked_contacts = []
+    for c in user.contacts:
+        masked_val = c.value
+        if c.method_type == 'email':
+            parts = c.value.split('@')
+            if len(parts) == 2:
+                masked_val = f"{parts[0][0]}***@{parts[1]}"
+        elif c.method_type == 'sms':
+            if len(c.value) > 4:
+                masked_val = f"***-***-{c.value[-4:]}"
+        
+        masked_contacts.append({
+            'id': c.id,
+            'type': c.method_type,
+            'start_val': masked_val
+        })
+        
+    return render_template('reset_options.html', contacts=masked_contacts)
+
+@main.route('/reset_password/verify/<token>', methods=['GET', 'POST'])
+def reset_verify(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+        
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    try:
+        user_id = s.loads(token, salt='password-reset-salt', max_age=3600) # 1 hour expiration
+    except SignatureExpired:
+        flash('The reset token has expired.', 'error')
+        return redirect(url_for('main.reset_request'))
+    except Exception:
+        flash('Invalid token.', 'error')
+        return redirect(url_for('main.reset_request'))
+        
+    user = User.query.get(user_id)
+    if not user:
+        flash('User not found.', 'error')
+        return redirect(url_for('main.reset_request'))
+        
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm = request.form.get('confirm')
+        
+        if password != confirm:
+            flash('Passwords do not match.', 'error')
+        elif not re.fullmatch(r'\d{4,6}', password):
+            flash('Password must be a 4-6 digit PIN.', 'error')
+        else:
+            user.set_password(password)
+            db.session.commit()
+            flash('Your password has been updated! You can now log in.', 'success')
+            return redirect(url_for('main.login'))
+            
+    return render_template('reset_set.html', token=token)
 
 
