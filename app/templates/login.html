@@ -10,8 +10,12 @@
         <input type="password" name="password" required>
         <button type="submit" style="width: 100%; margin-top: 10px;">Login</button>
         <div style="text-align: center; margin-top: 10px;">
+            {% if allow_reset %}
             <a href="{{ url_for('main.reset_request') }}">Forgot Password?</a><br>
+            {% endif %}
+            {% if allow_registration %}
             <a href="{{ url_for('main.register') }}">Create Account</a>
+            {% endif %}
         </div>
     </form>
 </div>

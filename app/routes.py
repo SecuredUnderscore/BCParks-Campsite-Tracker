@@ -121,7 +121,13 @@ def login():
             login_user(user)
             return redirect(url_for('main.index'))
         flash('Invalid credentials')
-    return render_template('login.html')
+    
+    # Pass settings to template to show/hide links
+    from .models import SystemSetting
+    allow_registration = SystemSetting.get_value('ALLOW_REGISTRATION', 'true') == 'true'
+    allow_reset = SystemSetting.get_value('ALLOW_PASSWORD_RESET', 'true') == 'true'
+    
+    return render_template('login.html', allow_registration=allow_registration, allow_reset=allow_reset)
 
 @main.route('/logout')
 @login_required
@@ -133,6 +139,11 @@ def logout():
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
+        
+    from .models import SystemSetting
+    if SystemSetting.get_value('ALLOW_REGISTRATION', 'true') != 'true':
+        flash('Account registration is currently disabled.', 'error')
+        return redirect(url_for('main.login'))
         
     if request.method == 'POST':
         username = request.form.get('username')
@@ -204,7 +215,6 @@ def admin_users():
                     db.session.commit()
                     flash('User deleted')
             
-
     users = User.query.all()
     return render_template('admin_users.html', users=users)
 
@@ -218,6 +228,13 @@ def admin_settings():
         return redirect(url_for('main.index'))
     
     if request.method == 'POST':
+        # Checkboxes need special handling (not present if unchecked)
+        allow_reg = 'true' if request.form.get('ALLOW_REGISTRATION') == 'on' else 'false'
+        allow_reset = 'true' if request.form.get('ALLOW_PASSWORD_RESET') == 'on' else 'false'
+        
+        SystemSetting.set_value('ALLOW_REGISTRATION', allow_reg)
+        SystemSetting.set_value('ALLOW_PASSWORD_RESET', allow_reset)
+
         keys = [
             'SCAN_INTERVAL_MINUTES',
             'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_VERIFY_SERVICE_SID', 'TWILIO_FROM_NUMBER',
@@ -427,6 +444,11 @@ def time_ago_filter(dt):
 def reset_request():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
+    
+    from .models import SystemSetting
+    if SystemSetting.get_value('ALLOW_PASSWORD_RESET', 'true') != 'true':
+        flash('Password resets are currently disabled.', 'error')
+        return redirect(url_for('main.login'))
         
     if request.method == 'POST':
         username = request.form.get('username')
