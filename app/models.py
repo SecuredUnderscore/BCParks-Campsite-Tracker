@@ -25,6 +25,7 @@ class ContactMethod(db.Model):
     method_type = db.Column(db.String(20), nullable=False) # 'email' or 'sms'
     value = db.Column(db.String(120), nullable=False)
     is_verified = db.Column(db.Boolean, default=False)
+    sms_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Alert(db.Model):

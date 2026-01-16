@@ -71,6 +71,13 @@
                         {% if contact.method_type == 'sms' %}
                         {% if contact.is_verified %}
                         <span style="color: green; font-weight: bold;">Verified</span>
+
+                        {% if sms_limit_enabled %}
+                        <div style="font-size: 0.85em; color: #555; margin-top: 4px;">
+                            Usage: {{ contact.sms_count or 0 }} / {{ sms_limit_max }}
+                        </div>
+                        {% endif %}
+
                         {% else %}
                         <span style="color: red;">Not Verified</span>
                         <button onclick="startVerify('{{ contact.value }}')"

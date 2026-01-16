@@ -6,12 +6,14 @@
     <form method="POST">
         <h3>User Account Control</h3>
         <label style="display: inline-block; margin-right: 15px;">
-            <input type="checkbox" name="ALLOW_REGISTRATION" {% if settings.get('ALLOW_REGISTRATION', 'true') == 'true' %}checked{% endif %}>
+            <input type="checkbox" name="ALLOW_REGISTRATION" {% if settings.get('ALLOW_REGISTRATION', 'true' )=='true'
+                %}checked{% endif %}>
             Allow Account Registration
         </label>
-        
+
         <label style="display: inline-block;">
-            <input type="checkbox" name="ALLOW_PASSWORD_RESET" {% if settings.get('ALLOW_PASSWORD_RESET', 'true') == 'true' %}checked{% endif %}>
+            <input type="checkbox" name="ALLOW_PASSWORD_RESET" {% if settings.get('ALLOW_PASSWORD_RESET', 'true'
+                )=='true' %}checked{% endif %}>
             Allow Account Password Resets
         </label>
         <hr>
@@ -38,6 +40,22 @@
         <label>From Number</label>
         <input type="text" name="TWILIO_FROM_NUMBER" value="{{ settings.get('TWILIO_FROM_NUMBER', '') }}"
             placeholder="+1...">
+
+        <h3>SMS Limits</h3>
+        <label style="display: inline-block;">
+            <input type="checkbox" name="SMS_LIMIT_ENABLED" {% if settings.get('SMS_LIMIT_ENABLED', 'false' )=='true'
+                %}checked{% endif %}>
+            Enable SMS Limits per Phone Number
+        </label>
+        <br>
+        <label>Max SMS per Number (Lifetime)</label>
+        <input type="number" name="SMS_LIMIT_MAX" value="{{ settings.get('SMS_LIMIT_MAX', '0') }}" min="0">
+
+        <h4>Reset Usage</h4>
+        <div style="background: #f9f9f9; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            <p style="margin-top: 0; font-size: 0.9em;">Enter a phone number to reset its usage counter to 0.</p>
+            <input type="text" name="RESET_PHONE_NUMBER" placeholder="e.g. 1234567890" style="margin-bottom: 5px;">
+        </div>
 
         <hr>
 

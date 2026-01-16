@@ -231,12 +231,14 @@ def admin_settings():
         # Checkboxes need special handling (not present if unchecked)
         allow_reg = 'true' if request.form.get('ALLOW_REGISTRATION') == 'on' else 'false'
         allow_reset = 'true' if request.form.get('ALLOW_PASSWORD_RESET') == 'on' else 'false'
+        sms_limit_enabled = 'true' if request.form.get('SMS_LIMIT_ENABLED') == 'on' else 'false'
         
         SystemSetting.set_value('ALLOW_REGISTRATION', allow_reg)
         SystemSetting.set_value('ALLOW_PASSWORD_RESET', allow_reset)
+        SystemSetting.set_value('SMS_LIMIT_ENABLED', sms_limit_enabled)
 
         keys = [
-            'SCAN_INTERVAL_MINUTES',
+            'SCAN_INTERVAL_MINUTES', 'SMS_LIMIT_MAX',
             'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_VERIFY_SERVICE_SID', 'TWILIO_FROM_NUMBER',
             'EMAIL_PROVIDER', 'SENDGRID_API_KEY', 'EMAIL_HOST', 'EMAIL_PORT', 'EMAIL_USER', 'EMAIL_PASSWORD', 'EMAIL_FROM'
         ]
@@ -246,6 +248,45 @@ def admin_settings():
             # If empty string, decide whether to clear it or ignore.
             # User might want to clear it.
             SystemSetting.set_value(k, val)
+        
+        # Handle SMS Reset for specific number if provided
+        reset_phone = request.form.get('RESET_PHONE_NUMBER')
+        if reset_phone:
+            from .models import ContactMethod
+            # Normalize input: remove all non-digits
+            target_clean = re.sub(r'\D', '', reset_phone)
+            
+            # Retrieve ALL SMS contacts (inefficient for millions, fine for thousands)
+            # Better: query where method_type='sms'
+            all_sms = ContactMethod.query.filter_by(method_type='sms').all()
+            
+            count = 0
+            for c in all_sms:
+                # Normalize stored value
+                stored_clean = re.sub(r'\D', '', c.value)
+                
+                # Check for match (endswith to handle +1 country code differences if vague input)
+                # Or exact match? User said "including country code... or not".
+                # If target has 10 digits and stored has 11 (with 1), they match.
+                # If target has 11 and stored has 10, they match.
+                
+                match = False
+                if target_clean == stored_clean:
+                    match = True
+                elif len(target_clean) == 10 and len(stored_clean) == 11 and stored_clean.endswith(target_clean):
+                    match = True
+                elif len(target_clean) == 11 and len(stored_clean) == 10 and target_clean.endswith(stored_clean):
+                    match = True
+                    
+                if match:
+                    c.sms_count = 0
+                    count += 1
+            
+            if count > 0:
+                db.session.commit()
+                flash(f'Reset limits for {count} instance(s) of {reset_phone}', 'success')
+            else:
+                flash(f'No matching phone numbers found for {reset_phone}', 'warning')
             
         flash('Settings updated')
         return redirect(url_for('main.admin_settings'))
@@ -290,7 +331,13 @@ def settings():
 
 
     contacts = ContactMethod.query.filter_by(user_id=current_user.id).all()
-    return render_template('settings.html', contacts=contacts)
+    
+    # SMS Limit Info
+    from .models import SystemSetting
+    sms_limit_enabled = SystemSetting.get_value('SMS_LIMIT_ENABLED', 'false') == 'true'
+    sms_limit_max = int(SystemSetting.get_value('SMS_LIMIT_MAX', '0'))
+    
+    return render_template('settings.html', contacts=contacts, sms_limit_enabled=sms_limit_enabled, sms_limit_max=sms_limit_max)
 
 @main.route('/alerts/new', methods=['GET', 'POST'])
 @main.route('/alerts/edit/<int:alert_id>', methods=['GET', 'POST'])

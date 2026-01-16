@@ -308,8 +308,26 @@ def send_notifications(alert, notifications, site_names, camp_name):
         for contact in contacts:
             if contact.method_type == 'sms':
                 if contact.is_verified:
+                    # Check Limit
+                    sms_invoked = False
+                    sms_limit_enabled = SystemSetting.get_value('SMS_LIMIT_ENABLED', 'false') == 'true'
+                    if sms_limit_enabled:
+                         sms_max = int(SystemSetting.get_value('SMS_LIMIT_MAX', '0'))
+                         current_count = contact.sms_count or 0
+                         if current_count >= sms_max:
+                             logger.warning(f"SMS Limit Reached for {contact.value} ({current_count}/{sms_max}). Skipping.")
+                             continue
+                         else:
+                             # Increment
+                             contact.sms_count = current_count + 1
+                             sms_invoked = True
+                    
                     # USE FULL MSG for SMS as requested
-                    send_sms(contact.value, msg)
+                    if send_sms(contact.value, msg):
+                        if sms_invoked:
+                             db.session.commit() # Save the increment if successful
+                    else:
+                        pass
                 else:
                     logger.warning(f"Skipping SMS to {contact.value} (Not Verified)")
             
