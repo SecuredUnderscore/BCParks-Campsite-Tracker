@@ -36,6 +36,9 @@ jobs:
           chmod 600 ~/.ssh/config
 
       - name: Deploy
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           ssh truenas << 'EOF'
             cd /home/camping/BCParks-Campsite-Tracker/
