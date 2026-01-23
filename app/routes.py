@@ -1,5 +1,5 @@
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, current_app, session
+from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, current_app, session, send_file
 from flask_login import login_user, logout_user, login_required, current_user
 from . import db
 from .models import User
@@ -620,3 +620,75 @@ def reset_verify(token):
     return render_template('reset_set.html', token=token)
 
 
+@main.route('/admin/export_db')
+@login_required
+def export_db():
+    if not current_user.is_admin:
+        flash("Access Denied", "error")
+        return redirect(url_for('main.index'))
+    
+    db_path = os.path.join(current_app.instance_path, 'db.sqlite3')
+    try:
+        return send_file(db_path, as_attachment=True, download_name='backup_db.sqlite3')
+    except Exception as e:
+        flash(f"Error exporting database: {str(e)}", "error")
+        return redirect(url_for('main.admin_settings'))
+
+@main.route('/admin/import_db', methods=['POST'])
+@login_required
+def import_db():
+    if not current_user.is_admin:
+        flash("Access Denied", "error")
+        return redirect(url_for('main.index'))
+    
+    if 'db_file' not in request.files:
+        flash('No file part', 'error')
+        return redirect(url_for('main.admin_settings'))
+        
+    file = request.files['db_file']
+    if file.filename == '':
+        flash('No selected file', 'error')
+        return redirect(url_for('main.admin_settings'))
+        
+    if file:
+        # Preserve current admin credentials
+        admin_username = current_user.username
+        admin_hash = current_user.password_hash
+        
+        # Save new DB file (overwrite)
+        db_path = os.path.join(current_app.instance_path, 'db.sqlite3')
+        
+        # Close any existing connections (Flask-SQLAlchemy handles this mostly per request, 
+        # but we want to be safe before swapping the file out from under it)
+        db.session.remove()
+        
+        try:
+            file.save(db_path)
+            
+            # Re-connect/Re-query to restore admin
+            # We need to commit the file save effectively by updating the DB session if needed, 
+            # but file replacement happens at FS level.
+            
+            # Look for admin user in the NEW database
+            user = User.query.filter_by(username=admin_username).first()
+            if user:
+                # Restore the password hash so the current session remains valid
+                user.password_hash = admin_hash
+                # Ensure they are still admin? "Override everything, EXCEPT for the admin login"
+                # Assuming we just want to keep the login working.
+                user.is_admin = True # Ensure they don't lock themselves out if the imported DB had this user as non-admin
+                if not user.is_admin:
+                     # This check above sets it to True, so this block is redundant but safety logic:
+                     pass
+            else:
+                # Create the admin user if they don't exist in the imported data
+                user = User(username=admin_username, password_hash=admin_hash, is_admin=True)
+                db.session.add(user)
+                
+            db.session.commit()
+            flash('Database imported successfully. Admin login preserved.', 'success')
+            
+        except Exception as e:
+            flash(f'Error importing database: {str(e)}', 'error')
+            
+    return redirect(url_for('main.admin_settings'))

@@ -98,6 +98,36 @@
         <br><br>
         <button type="submit">Save Settings</button>
     </form>
+
+    <hr style="margin: 30px 0;">
+
+    <h3>Database Management</h3>
+    <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+
+        <!-- Export -->
+        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 5px; flex: 1; min-width: 250px;">
+            <h4>Backup</h4>
+            <p>Download a copy of the current database.</p>
+            <a href="{{ url_for('main.export_db') }}" class="button"
+                style="text-decoration: none; background-color: #007bff; color: white; padding: 8px 15px; border-radius: 4px; display: inline-block;">Export
+                Database</a>
+        </div>
+
+        <!-- Import -->
+        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 5px; flex: 1; min-width: 250px;">
+            <h4>Restore</h4>
+            <p style="color: #dc3545; font-weight: bold; margin-bottom: 5px;">Warning: This will overwrite all data!</p>
+            <p style="font-size: 0.9em; margin-bottom: 15px;">Your current admin login will be preserved.</p>
+            <form action="{{ url_for('main.import_db') }}" method="POST" enctype="multipart/form-data"
+                onsubmit="return confirm('WARNING: This will overwrite the ENTIRE database (alerts, users, etc) with the uploaded file.\n\nOnly your current admin login will be preserved.\n\nAre you sure you want to proceed?');">
+                <input type="file" name="db_file" accept=".sqlite3,.db" required
+                    style="margin-bottom: 10px; width: 100%;">
+                <button type="submit"
+                    style="background-color: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Import
+                    & Overwrite</button>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>
