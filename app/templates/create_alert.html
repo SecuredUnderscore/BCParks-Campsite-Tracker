@@ -40,15 +40,15 @@
 
         <!-- Step 1: Campground -->
         <div class="form-group">
-            <label>1. Select Campground</label>
+            <label>1. Select Park</label>
             <select id="campgroundSelect" name="campground_id" style="width: 100%; padding: 12px; font-size: 16px;">
-                <option value="">Loading campgrounds...</option>
+                <option value="">Loading parks...</option>
             </select>
         </div>
 
         <!-- Step 2: Sub-Campground (Hidden by default) -->
         <div class="form-group" id="subCampgroundContainer" style="display: none; margin-top: 15px;">
-            <label>2. Select Sub-Campground</label>
+            <label>2. Select Campground</label>
             <select id="subCampgroundSelect" name="sub_campground_id"
                 style="width: 100%; padding: 12px; font-size: 16px;">
                 <option value="">Select...</option>
@@ -141,7 +141,7 @@
     try {
         const res = await fetch('/api/proxy/campgrounds');
         const data = await res.json();
-        campgroundSelect.innerHTML = '<option value="">Select a Campground...</option>';
+        campgroundSelect.innerHTML = '<option value="">Select a Park...</option>';
 
         // Map to objects with resolved names for sorting
         const sortedCampgrounds = data.map(cg => {
@@ -172,7 +172,7 @@
         }
 
     } catch (e) {
-        campgroundSelect.innerHTML = '<option>Error loading campgrounds</option>';
+        campgroundSelect.innerHTML = '<option>Error loading parks</option>';
         console.error(e);
     }
 
