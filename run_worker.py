@@ -1,7 +1,10 @@
 import time
+import logging
 from app import create_app
 from flask_apscheduler import APScheduler
 from app.checker import check_alerts
+
+logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     
@@ -19,7 +22,7 @@ if __name__ == '__main__':
     with app.app_context():
         from app.models import SystemSetting
         current_interval = int(SystemSetting.get_value('SCAN_INTERVAL_MINUTES', '5'))
-        print(f"DEBUG: Using Scan Interval: {current_interval} minute(s)")
+        logger.info(f"Using scan interval: {current_interval} minute(s)")
 
     scheduler.add_job(id='scanner_task', func=check_alerts, args=[app], trigger='interval', minutes=current_interval)
     
@@ -31,7 +34,7 @@ if __name__ == '__main__':
                 from app.models import SystemSetting
                 new_interval = int(SystemSetting.get_value('SCAN_INTERVAL_MINUTES', '5'))
                 if new_interval != current_interval:
-                    print(f"CONFIG CHANGE: Updating scan interval from {current_interval} to {new_interval} minutes.")
+                    logger.info(f"Updating scan interval from {current_interval} to {new_interval} minutes")
                     # Use standard 'remove_job' (native APScheduler name)
                     try:
                         scheduler.remove_job('scanner_task')
@@ -41,15 +44,15 @@ if __name__ == '__main__':
                     scheduler.add_job(id='scanner_task', func=check_alerts, args=[app_instance], trigger='interval', minutes=new_interval)
                     current_interval = new_interval
             except Exception as e:
-                print(f"Error checking config: {e}")
+                logger.error(f"Error checking config: {e}")
 
     # Run watcher every 1 minute
     scheduler.add_job(id='config_watcher', func=check_config_update, args=[app], trigger='interval', minutes=1)
 
-    print("Worker started. Running scheduler...")
+    logger.info("Worker started. Running scheduler...")
     
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Worker stopping...")
+        logger.info("Worker stopping...")

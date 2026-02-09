@@ -7,12 +7,14 @@ import requests
 import json
 import os
 import re
+import logging
 from datetime import datetime
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 from .email_helper import send_email
 from .twilio_helper import send_sms
 
 main = Blueprint('main', __name__)
+logger = logging.getLogger(__name__)
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -431,13 +433,13 @@ def verify_phone():
     from .twilio_helper import start_verification, check_verification
 
     contacts = ContactMethod.query.filter_by(user_id=current_user.id, value=phone, method_type='sms').all()
-    print(f"DEBUG: Receiving Verification Request. Action={action}, Phone={phone}")
+    logger.debug(f"Receiving verification request for phone={phone}, action={action}")
     
     if not contacts:
-        print(f"DEBUG: Phone number {phone} not found for user {current_user.id}")
+        logger.warning(f"Phone number {phone} not found for user {current_user.id}")
         return jsonify({'success': False, 'message': 'Phone number not found in profile.'}), 404
     
-    print(f"DEBUG: Found {len(contacts)} contacts. Starting Twilio process...")
+    logger.debug(f"Found {len(contacts)} contacts. Starting Twilio verification process")
     
     if action == 'start':
         status = start_verification(phone)

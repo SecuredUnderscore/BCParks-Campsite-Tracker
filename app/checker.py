@@ -301,7 +301,7 @@ def send_notifications(alert, notifications, site_names, camp_name):
             f"for {nights} nights. {url}"
         )
         
-        print(f"SENDING: {msg}")
+        logger.info(f"Sending notification: {camp_name} site {site_label} for {nights} nights")
         
         subject = f"BC Parks: {camp_name} Available!"
 
