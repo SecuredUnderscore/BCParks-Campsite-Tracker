@@ -145,16 +145,6 @@ Contributions are welcome! Please:
 3. Test thoroughly with Docker
 4. Submit a pull request
 
-## License
-
-[Add your license here]
-
-## Support
-
-For issues and questions:
-- GitHub Issues: [Add your GitHub repo link]
-- Documentation: See `/docs/` in the web interface for Twilio and SMTP setup guides
-
 ---
 
 **Disclaimer**: This project is not affiliated with BC Parks. Use responsibly and in accordance with BC Parks terms of service.
