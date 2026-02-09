@@ -23,7 +23,7 @@ A self-hosted notification system for monitoring BC Parks campsite availability.
 
 1. **Clone the repository**:
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/SecuredUnderscore/BCParks-Campsite-Tracker.git
    cd BCParks-Campsite-Tracker
    ```
 
