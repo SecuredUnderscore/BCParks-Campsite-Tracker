@@ -14,15 +14,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set environment variables
-ENV FLASK_APP=app
-ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
+ENV PORT=5000
+ENV WORKERS=1
 
-# Expose port 5000
-EXPOSE 5000
+# Expose port (using ARG for build-time configuration)
+ARG PORT=5000
+EXPOSE ${PORT}
 
 # Define volume for database persistence
 VOLUME /app/instance
 
-# Run gunicorn with 1 worker to ensure only one scheduler instance runs
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5000", "app:create_app()"]
+# Run gunicorn - using shell form to allow variable substitution
+CMD gunicorn -w ${WORKERS} -b 0.0.0.0:${PORT} "app:create_app()"

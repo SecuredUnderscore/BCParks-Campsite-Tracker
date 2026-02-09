@@ -3,13 +3,13 @@ services:
     build: .
     container_name: bcparks-web
     ports:
-      - "5000:5000"
+      - "${PORT}:${PORT}"
+    environment:
+      - PORT=${PORT}
+      - WORKERS=${WORKERS}
     volumes:
       - ./instance:/app/instance
-    environment:
-      - FLASK_ENV=production
     restart: unless-stopped
-    command: gunicorn -w 4 -b 0.0.0.0:5000 "app:create_app()"
 
   worker:
     build: .
@@ -18,7 +18,5 @@ services:
       - ./instance:/app/instance
       - ./app:/app/app
       - ./run_worker.py:/app/run_worker.py
-    environment:
-      - FLASK_ENV=production
     restart: unless-stopped
     command: python run_worker.py
