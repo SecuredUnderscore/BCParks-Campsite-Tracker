@@ -1,6 +1,7 @@
 import json
 import logging
 import requests
+import base64
 from datetime import datetime, timedelta
 from . import db
 from .models import Alert
@@ -263,6 +264,19 @@ def add_finding(findings, res_id, base_date, idx, nights):
     
     findings[res_id].append(key)
 
+def shorten_booking_url(domain, campground_id, map_id, start_date, end_date, nights):
+    """
+    Create a shortened booking URL using base64 encoding.
+    Format: http://{domain}/b?d={base64_encoded_params}
+    """
+    # Create compact parameter string: campground_id|map_id|start_date|end_date|nights
+    params = f"{campground_id}|{map_id}|{start_date}|{end_date}|{nights}"
+    # Base64 encode for compactness
+    encoded = base64.urlsafe_b64encode(params.encode()).decode().rstrip('=')
+    # Create shortened URL
+    protocol = 'https' if not domain.startswith('127.0.0.1') and not domain.startswith('localhost') else 'http'
+    return f"{protocol}://{domain}/b?d={encoded}"
+
 def send_notifications(alert, notifications, site_names, camp_name):
     # notifications: list of (res_id, "YYYY-MM-DD:Nights")
     
@@ -283,15 +297,31 @@ def send_notifications(alert, notifications, site_names, camp_name):
         # Resolve Name (Lookup using STRING key)
         site_label = site_names.get(str(res_id), str(res_id))
         
-        url = (
-            f"https://camping.bcparks.ca/create-booking/results?"
-            f"resourceLocationId={alert.campground_id}&"
-            f"mapId={alert.sub_campground_id}&"
-            f"startDate={dt.strftime('%Y-%m-%d')}&"
-            f"endDate={end_dt.strftime('%Y-%m-%d')}&"
-            f"nights={nights}&"
-            f"bookingCategoryId=0&equipmentId=-32768&subEquipmentId=-32768"
-        )
+        # Check if URL shortening is enabled
+        url_shortening_enabled = SystemSetting.get_value('URL_SHORTENING_ENABLED', 'false') == 'true'
+        
+        if url_shortening_enabled:
+            # Use shortened URL
+            domain = SystemSetting.get_value('URL_SHORTENING_DOMAIN', '127.0.0.1:5000')
+            url = shorten_booking_url(
+                domain,
+                alert.campground_id,
+                alert.sub_campground_id,
+                dt.strftime('%Y-%m-%d'),
+                end_dt.strftime('%Y-%m-%d'),
+                nights
+            )
+        else:
+            # Use full URL
+            url = (
+                f"https://camping.bcparks.ca/create-booking/results?"
+                f"resourceLocationId={alert.campground_id}&"
+                f"mapId={alert.sub_campground_id}&"
+                f"startDate={dt.strftime('%Y-%m-%d')}&"
+                f"endDate={end_dt.strftime('%Y-%m-%d')}&"
+                f"nights={nights}&"
+                f"bookingCategoryId=0&equipmentId=-32768&subEquipmentId=-32768"
+            )
         
         # EXACT Format requested:
         # Campsite Found! {Campground} site {Site #/Name}, {Day} {Start Month} {Start Day} - {End Month} {End Day} for {#} nights. {Link}

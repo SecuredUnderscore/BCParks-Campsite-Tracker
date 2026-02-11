@@ -8,6 +8,7 @@ import json
 import os
 import re
 import logging
+import base64
 from datetime import datetime
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 from .email_helper import send_email
@@ -234,13 +235,15 @@ def admin_settings():
         allow_reg = 'true' if request.form.get('ALLOW_REGISTRATION') == 'on' else 'false'
         allow_reset = 'true' if request.form.get('ALLOW_PASSWORD_RESET') == 'on' else 'false'
         sms_limit_enabled = 'true' if request.form.get('SMS_LIMIT_ENABLED') == 'on' else 'false'
+        url_shortening_enabled = 'true' if request.form.get('URL_SHORTENING_ENABLED') == 'on' else 'false'
         
         SystemSetting.set_value('ALLOW_REGISTRATION', allow_reg)
         SystemSetting.set_value('ALLOW_PASSWORD_RESET', allow_reset)
         SystemSetting.set_value('SMS_LIMIT_ENABLED', sms_limit_enabled)
+        SystemSetting.set_value('URL_SHORTENING_ENABLED', url_shortening_enabled)
 
         keys = [
-            'SCAN_INTERVAL_MINUTES', 'SMS_LIMIT_MAX',
+            'SCAN_INTERVAL_MINUTES', 'SMS_LIMIT_MAX', 'URL_SHORTENING_DOMAIN',
             'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_VERIFY_SERVICE_SID', 'TWILIO_FROM_NUMBER',
             'EMAIL_PROVIDER', 'SENDGRID_API_KEY', 'EMAIL_HOST', 'EMAIL_PORT', 'EMAIL_USER', 'EMAIL_PASSWORD', 'EMAIL_FROM'
         ]
@@ -694,3 +697,38 @@ def import_db():
             flash(f'Error importing database: {str(e)}', 'error')
             
     return redirect(url_for('main.admin_settings'))
+
+@main.route('/b')
+def booking_redirect():
+    """Decode and redirect shortened booking URLs to BC Parks"""
+    encoded = request.args.get('d')
+    if not encoded:
+        flash('Invalid booking link', 'error')
+        return redirect(url_for('main.index'))
+    
+    try:
+        # Add padding back if needed for base64 decoding
+        padding = 4 - (len(encoded) % 4)
+        if padding != 4:
+            encoded += '=' * padding
+        
+        # Decode parameters
+        decoded = base64.urlsafe_b64decode(encoded).decode()
+        campground_id, map_id, start_date, end_date, nights = decoded.split('|')
+        
+        # Construct full BC Parks URL
+        bc_parks_url = (
+            f"https://camping.bcparks.ca/create-booking/results?"
+            f"resourceLocationId={campground_id}&"
+            f"mapId={map_id}&"
+            f"startDate={start_date}&"
+            f"endDate={end_date}&"
+            f"nights={nights}&"
+            f"bookingCategoryId=0&equipmentId=-32768&subEquipmentId=-32768"
+        )
+        
+        return redirect(bc_parks_url)
+    except Exception as e:
+        logger.error(f"Failed to decode booking URL: {e}")
+        flash('Invalid or corrupted booking link', 'error')
+        return redirect(url_for('main.index'))

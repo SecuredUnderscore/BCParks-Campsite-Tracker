@@ -59,6 +59,18 @@
 
         <hr>
 
+        <h3>URL Shortening</h3>
+        <label style="display: inline-block;">
+            <input type="checkbox" name="URL_SHORTENING_ENABLED" {% if settings.get('URL_SHORTENING_ENABLED', 'false')=='true' %}checked{% endif %}>
+            Enable URL Shortening (reduces SMS length)
+        </label>
+        <br>
+        <label>Shortening Domain</label>
+        <input type="text" name="URL_SHORTENING_DOMAIN" value="{{ settings.get('URL_SHORTENING_DOMAIN', '127.0.0.1:5000') }}" placeholder="yourdomain.com or 127.0.0.1:5000">
+        <small class="text-muted" style="color: #666;">Include port if needed (e.g., 127.0.0.1:5000 or example.com:8080). For production, use your public domain.</small>
+
+        <hr>
+
         <h3>Email Settings <a href="{{ url_for('main.docs', topic='smtp') }}" target="_blank"
                 style="font-size: 0.8em;">[?] How to Setup</a></h3>
         <label>Provider</label>
